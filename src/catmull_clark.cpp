@@ -9,21 +9,21 @@ namespace
     struct VertexRecord
     {
         Vec3 position;
-        std::vector<int> edges;
-        std::vector<int> faces;
+        std::vector<int> edges; // 包含该顶点的边
+        std::vector<int> faces; // 包含该顶点的面
     };
 
     struct EdgeRecord
     {
-        int low_vertex  = -1;
-        int high_vertex = -1;
-        int face_count  = 0;
-        int faces[2]    = { -1, -1 };
+        int lowVertex  = -1;         // 下标值较小的那个顶点
+        int highVertex = -1;         // 下标值较大的那个顶点
+        int faceCount  = 0;          // 属于多少个面
+        int faces[2]   = { -1, -1 }; // 包含该边的面
     };
 
     struct FaceRecord
     {
-        bool isQuad = false;;
+        bool isQuad = false;
         int vertices[4] = { -1, -1, -1, -1 };
         int edges   [4] = { -1, -1, -1, -1 };
     };
@@ -103,8 +103,8 @@ namespace
             int ret = static_cast<int>(edges.size());
 
             EdgeRecord newEdgeRecord;
-            newEdgeRecord.low_vertex = sortedVertexPair.x;
-            newEdgeRecord.high_vertex = sortedVertexPair.y;
+            newEdgeRecord.lowVertex  = sortedVertexPair.x;
+            newEdgeRecord.highVertex = sortedVertexPair.y;
             edges.push_back(newEdgeRecord);
             vertexPairToEdge[sortedVertexPair] = ret;
 
@@ -141,8 +141,12 @@ namespace
                 int edgeIndex   = model.getEdgeIndex({ startVertex, endVertex });
 
                 edgeIndices[i] = edgeIndex;
-                model.vertices[startVertex].edges.push_back(edgeIndex);
-                model.vertices[endVertex  ].edges.push_back(edgeIndex);
+
+                if(startVertex < endVertex)
+                {
+                    model.vertices[startVertex].edges.push_back(edgeIndex);
+                    model.vertices[endVertex].edges.push_back(edgeIndex);
+                }
             }
 
             // 将面添加到面表
@@ -174,11 +178,11 @@ namespace
             for(int i = 0; i < edgeCount; ++i)
             {
                 auto &edgeRecord = model.edges[edgeIndices[i]];
-                if(edgeRecord.face_count >= 2)
+                if(edgeRecord.faceCount >= 2)
                 {
-                    continue;
+                    throw std::runtime_error("topology error: edge.faceCount > 2");
                 }
-                edgeRecord.faces[edgeRecord.face_count++] = faceIndex;
+                edgeRecord.faces[edgeRecord.faceCount++] = faceIndex;
             }
         }
 
@@ -210,20 +214,20 @@ namespace
         // 计算edge points
 
         std::vector<Vec3> edgePoints(oldModel.edges.size());
-        for(size_t i = 0; i < edgePoints.size(); ++i)
+        for(size_t i = 0; i < oldModel.edges.size(); ++i)
         {
             auto &e = oldModel.edges[i];
-            if(e.face_count != 2)
+            if(e.faceCount != 2)
             {
                 edgePoints[i] = 0.5f * (
-                    oldModel.vertices[e.low_vertex].position +
-                    oldModel.vertices[e.high_vertex].position);
+                    oldModel.vertices[e.lowVertex].position +
+                    oldModel.vertices[e.highVertex].position);
             }
             else
             {
                 edgePoints[i] = 0.25f * (
-                    oldModel.vertices[e.low_vertex].position +
-                    oldModel.vertices[e.high_vertex].position +
+                    oldModel.vertices[e.lowVertex].position +
+                    oldModel.vertices[e.highVertex].position +
                     facePoints[e.faces[0]] + facePoints[e.faces[1]]);
             }
         }
@@ -247,9 +251,9 @@ namespace
             float m3 = 2.0f / n;
 
             Vec3 avgFacePosition;
-            for(int j = 0; j < n; ++j)
+            for(auto fi : v.faces)
             {
-                avgFacePosition += facePoints[v.faces[j]];
+                avgFacePosition += facePoints[fi];
             }
             avgFacePosition /= static_cast<float>(n);
 
@@ -257,7 +261,7 @@ namespace
             for(auto edgeIndex : v.edges)
             {
                 auto &edge = oldModel.edges[edgeIndex];
-                avgEdgeMid += 0.5f * (oldPositions[edge.low_vertex] + oldPositions[edge.high_vertex]);
+                avgEdgeMid += 0.5f * (oldPositions[edge.lowVertex] + oldPositions[edge.highVertex]);
             }
             avgEdgeMid /= static_cast<float>(v.edges.size());
 

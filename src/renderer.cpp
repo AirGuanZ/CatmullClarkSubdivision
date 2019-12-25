@@ -45,6 +45,8 @@ struct PSInput
 float4 main(PSInput input) : SV_TARGET
 {
     float lightFactor = 0.1 + 0.75 * max(0, dot(normalize(input.normal), -LightDir));
+    lightFactor = 0.4 * lightFactor + 0.6 * lightFactor * lightFactor;
+    lightFactor = pow(lightFactor, 1 / 1.4);
     return float4(lightFactor, lightFactor, lightFactor, 1);
 };
 )___";

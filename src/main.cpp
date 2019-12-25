@@ -3,6 +3,7 @@
 #include <agz/utility/d3d11/ImGui/imgui.h>
 #include <agz/utility/d3d11/ImGui/imfilebrowser.h>
 #include <agz/utility/mesh.h>
+#include <agz/utility/time.h>
 
 #include <catmull_clark/catmull_clark.h>
 #include <catmull_clark/renderer.h>
@@ -115,8 +116,8 @@ void run()
     // 绘制状态
 
     bool wireframe = false;
-    float cameraVertRad_ = 0;
-    float cameraHoriRad_ = 0;
+    float cameraVertRad = 0.5f;
+    float cameraHoriRad = 0.2f;
     float cameraDistance = 5;
 
     // 注册鼠标滚轮回调函数
@@ -125,7 +126,7 @@ void run()
         [&](const D3D::WheelScrollEvent &e)
     {
         cameraDistance -= 0.002f * e.offset;
-        cameraDistance = agz::math::clamp(cameraDistance, 2.3f, 10.0f);
+        cameraDistance = agz::math::clamp(cameraDistance, 1.0f, 10.0f);
     });
     mouse->Attach(&wheelScrollHandler);
 
@@ -145,18 +146,18 @@ void run()
 
         if(mouse->IsMouseButtonPressed(D3D::MouseButton::Middle))
         {
-            cameraHoriRad_ -= 0.01f * mouse->GetRelativeCursorPositionX();
-            cameraVertRad_ += 0.01f * mouse->GetRelativeCursorPositionY();
-            cameraVertRad_ = agz::math::clamp(cameraVertRad_, -agz::math::PI_f / 2 + 0.01f, agz::math::PI_f / 2 - 0.01f);
+            cameraHoriRad -= 0.01f * mouse->GetRelativeCursorPositionX();
+            cameraVertRad += 0.01f * mouse->GetRelativeCursorPositionY();
+            cameraVertRad = agz::math::clamp(cameraVertRad, -agz::math::PI_f / 2 + 0.01f, agz::math::PI_f / 2 - 0.01f);
         }
         Vec3 cameraPos = cameraDistance * Vec3(
-            std::cos(cameraVertRad_) * std::cos(cameraHoriRad_),
-            std::sin(cameraVertRad_),
-            std::cos(cameraVertRad_) * std::sin(cameraHoriRad_));
+            std::cos(cameraVertRad) * std::cos(cameraHoriRad),
+            std::sin(cameraVertRad),
+            std::cos(cameraVertRad) * std::sin(cameraHoriRad));
         Vec3 lightDir = -Vec3(
-            std::cos(cameraVertRad_ + 0.3f) * std::cos(cameraHoriRad_ - 0.2f),
-            std::sin(cameraVertRad_ + 0.3f),
-            std::cos(cameraVertRad_ + 0.3f) * std::sin(cameraHoriRad_ - 0.2f)).normalize();
+            std::cos(cameraVertRad + 0.3f) * std::cos(cameraHoriRad - 0.2f),
+            std::sin(cameraVertRad + 0.3f),
+            std::cos(cameraVertRad + 0.3f) * std::sin(cameraHoriRad - 0.2f)).normalize();
         Mat4 view = Trans4::look_at(cameraPos, { 0, 0, 0 }, { 0, 1, 0 });
         renderer.setLightDir(lightDir);
         renderer.setCameraViewProj(view * proj);
@@ -173,7 +174,9 @@ void run()
             ImGui::PushItemWidth(200);
             if(ImGui::SliderInt("subdivision", &subdivisionCount, 0, 5))
             {
+                agz::time::clock_t clock;
                 subdividedMesh = applyCatmullClarkSubdivision(originalMesh, subdivisionCount);
+                std::cout << "time: " << clock.us() / 1000.0f / 100 << "ms" << std::endl;
                 renderer.setMesh(subdividedMesh);
             }
             ImGui::PopItemWidth();
@@ -198,8 +201,8 @@ void run()
 
             subdivisionCount = 0;
             originalMesh = loadMesh(fileBrowser.GetSelected().string());
-            subdividedMesh = applyCatmullClarkSubdivision(originalMesh, subdivisionCount);
-            
+            subdividedMesh = originalMesh;
+
             renderer.setWorldTransform(localToUnitCube(originalMesh));
             renderer.setMesh(subdividedMesh);
         }
@@ -225,5 +228,6 @@ int main()
     catch(const std::exception &err)
     {
         std::cout << err.what() << std::endl;
+        return -1;
     }
 }
