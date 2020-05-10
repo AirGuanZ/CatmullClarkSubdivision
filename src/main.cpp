@@ -106,7 +106,7 @@ void run()
     // 加载初始模型
 
     int subdivisionCount = 0;
-    Mesh originalMesh   = loadMesh("./cube.obj");
+    Mesh originalMesh   = loadMesh("./asset/cube.obj");
     Mesh subdividedMesh = applyCatmullClarkSubdivision(originalMesh, subdivisionCount);
 
     Renderer renderer;

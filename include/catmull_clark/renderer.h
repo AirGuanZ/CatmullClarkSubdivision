@@ -40,6 +40,10 @@ public:
      */
     void setWireframe(bool wireframe);
 
+    /*
+     * 用于绘制的模型统计数据
+     */
+
     int getVertexCount() const noexcept;
 
     int getEdgeCount() const noexcept;
